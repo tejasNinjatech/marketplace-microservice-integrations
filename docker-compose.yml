@@ -1,0 +1,46 @@
+version: '3.8'
+services:
+  web:
+    build:
+      context: ./event_service
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql://user:password@db/eventdb
+      - REDIS_URL=redis://redis:6379/0
+      - ALLOWED_HOSTS=eventservice,localhost,127.0.0.1
+    depends_on:
+      - db
+      - redis
+      
+  event_service:
+    build:
+      context: ./event_service
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql://user:password@db/eventdb
+      - REDIS_URL=redis://redis:6379/0
+    depends_on:
+      - db
+      - redis
+
+  data_loader_service:
+    image: jeffail/benthos:latest
+    volumes:
+      - ./data_loader_service/benthos.yaml:/benthos.yaml
+    depends_on:
+      - web
+      - db
+    environment:
+      - BENTHOS_LOG_LEVEL=OFF
+
+  db:
+    image: postgres:13
+    environment:
+      - POSTGRES_DB=eventdb
+      - POSTGRES_USER=user
+      - POSTGRES_PASSWORD=password
+
+  redis:
+    image: redis:alpine

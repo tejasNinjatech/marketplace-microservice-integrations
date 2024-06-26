@@ -1,0 +1,43 @@
+rate_limit_resources:
+  - label: rate_limit_resource
+    local:
+      count: 1
+      interval: 1m
+
+input:
+  http_client:
+    url: https://provider.code-challenge.feverup.com/api/events
+    verb: GET
+    retry_period: 5m
+    stream:
+      enabled: false
+  processors:
+    - rate_limit:
+        resource: rate_limit_resource
+
+pipeline:
+  processors:
+    - xml:
+        operator: to_json
+    - bloblang: |
+        root = this.eventList.output.base_event.map_each(event -> {
+          "external_id": event.get("-base_event_id"),
+          "name": event.get("-title"),
+          "start_date": event.event.get("-event_start_date"),
+          "end_date": event.event.get("-event_end_date"),
+          "sell_mode": event.get("-sell_mode")
+        })
+
+    - for_each:
+        - branch:
+            request_map: 'root = this'
+            processors:
+              - http:
+                  url: "http://web:8005/api/events/bulk_create/"
+                  verb: POST
+                  headers:
+                    Content-Type: application/json
+cache_resources:
+  - label: events_cache
+    redis:
+      url: redis://redis:6379

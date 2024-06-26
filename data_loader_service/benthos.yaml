@@ -1,0 +1,70 @@
+input:
+  http_client:
+    url: https://provider.code-challenge.feverup.com/api/events
+    verb: GET
+    retry_period: 5m
+    stream:
+      enabled: false
+  processors:
+    - rate_limit:
+        resource: rate_limit_resource
+pipeline:
+  processors:
+    - xml:
+        operator: to_json
+    - bloblang: |
+        root = this.eventList.output.base_event.map_each(event -> {
+          "external_id": event.get("-base_event_id"),
+          "name": event.get("-title"),
+          "start_date": event.event.get("-event_start_date"),
+          "end_date": event.event.get("-event_end_date"),
+          "sell_mode": event.get("-sell_mode")
+        })
+        #root = this.eventList.output.base_event
+    - mapping: root = this.filter(fan -> fan.sell_mode == "online")
+    - unarchive:
+        format: json_array
+    - branch:
+        request_map: |
+          root = {
+            "external_id": this.external_id,
+            "name": this.name,
+            "start_date": this.start_date,
+            "end_date": this.end_date,
+            "sell_mode": this.sell_mode
+          }
+        processors:
+          - cache:
+              resource: events_cache
+              operator: get
+              key: ${! this.external_id }
+          - bloblang: |
+              root = if this == null {
+                deleted()
+              } else {
+                this
+              }
+    - for_each:
+        - http:
+            url: http://web:8005/api/events/
+            verb: POST
+            headers:
+              Content-Type: application/json
+            retries: 0
+        # - log:
+        #     level: DEBUG
+        #     message: 'field: ${! json() } }'
+        - cache:
+            resource: events_cache
+            operator: set
+            key: ${! this.external_id }
+            ttl: 1h
+cache_resources:
+  - label: events_cache
+    redis:
+      url: redis://redis:6379
+rate_limit_resources:
+  - label: rate_limit_resource
+    local:
+      count: 1
+      interval: 1m
