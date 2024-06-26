@@ -15,8 +15,6 @@ COPY . .
 
 # Specify the command to run the application
 # CMD ["gunicorn", "--bind", "0.0.0.0:8000", "event_service.wsgi:application"]
-RUN docker-compose exec web python manage.py makemigrations
-RUN docker-compose exec web python manage.py migrate
 
 CMD ["python", "manage.py","runserver","0.0.0.0:8005"]
 

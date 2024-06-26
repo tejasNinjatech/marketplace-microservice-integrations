@@ -181,7 +181,7 @@ pipeline:
               }
     - for_each:
         - http:
-            url: http://web:8000/api/events/
+            url: http://web:8005/api/events/
             verb: POST
             headers:
               Content-Type: application/json
@@ -268,10 +268,10 @@ Using Redis for caching event IDs in Benthos to avoid duplicate API calls.
 
 ### API Endpoints
 
-- **Django API Endpoint**: `http://localhost:8000/api/events/`
-- **Django Bulk Create API Endpoint**: `http://localhost:8000/api/events/bulk_create/`
+- **Django API Endpoint**: `http://localhost:8005/api/events/`
+- **Django Bulk Create API Endpoint**: `http://localhost:8005/api/events/bulk_create/`
 - **Benthos Input Endpoint**: `https://provider.code-challenge.feverup.com/api/events`
-- **Swagger API Endpoint**: `http://127.0.0.1:8000/swagger/`
+- **Swagger API Endpoint**: `http://127.0.0.1:8005/swagger/`
 
 ### Why Use Benthos with API
 
